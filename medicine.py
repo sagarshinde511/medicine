@@ -45,6 +45,10 @@ def update_medicine(id, name, date, time, compartment):
         cursor.close()
         conn.close()
 
+# Function to fetch compartments for dropdown
+def get_compartments():
+    return [str(i) for i in range(1, 11)]  # Example compartments from 1 to 10
+
 # Function to fetch medicine records by date
 def get_medicine_by_date(date):
     try:
@@ -72,11 +76,19 @@ with tab1:
     id = st.number_input("Enter ID", min_value=1, step=1)
     name = st.text_input("Medicine Name")
     date = st.date_input("Date", value=datetime.today())
-    time = st.time_input("Time")
+
+    # Time Selection with Spinner (HH:MM format)
+    col1, col2 = st.columns(2)
+    with col1:
+        hour = st.number_input("Hour", min_value=0, max_value=23, step=1, format="%02d")
+    with col2:
+        minute = st.number_input("Minute", min_value=0, max_value=59, step=1, format="%02d")
+    time = f"{hour:02d}:{minute:02d}"  # Formatting time in HH:MM format
+
     compartment = st.text_input("Compartment")
 
     if st.button("Insert Data"):
-        response = insert_medicine(id, name, date.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), compartment)
+        response = insert_medicine(id, name, date.strftime("%Y-%m-%d"), time, compartment)
         st.success(response)
 
 # **Tab 2: Update Data**
@@ -85,11 +97,20 @@ with tab2:
     id_update = st.number_input("Enter ID to Update", min_value=1, step=1)
     name_update = st.text_input("New Medicine Name")
     date_update = st.date_input("Date to Update", value=datetime.today())
-    time_update = st.time_input("New Time")
-    compartment_update = st.text_input("New Compartment")
+
+    # Time Selection with Spinner (HH:MM format)
+    col1, col2 = st.columns(2)
+    with col1:
+        hour_update = st.number_input("New Hour", min_value=0, max_value=23, step=1, format="%02d")
+    with col2:
+        minute_update = st.number_input("New Minute", min_value=0, max_value=59, step=1, format="%02d")
+    time_update = f"{hour_update:02d}:{minute_update:02d}"
+
+    # Dropdown for Compartment Selection
+    compartment_update = st.selectbox("Select New Compartment", get_compartments())
 
     if st.button("Update Data"):
-        response = update_medicine(id_update, name_update, date_update.strftime("%Y-%m-%d"), time_update.strftime("%H:%M:%S"), compartment_update)
+        response = update_medicine(id_update, name_update, date_update.strftime("%Y-%m-%d"), time_update, compartment_update)
         st.success(response)
 
 # **Tab 3: Check Data**
