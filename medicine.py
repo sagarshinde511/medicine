@@ -15,13 +15,13 @@ DB_CONFIG = {
 def connect_db():
     return mysql.connector.connect(**DB_CONFIG)
 
-# Function to insert data
-def insert_medicine(id, name, date, time, compartment):
+# Function to insert data (ID default to 1)
+def insert_medicine(name, date, time, compartment):
     try:
         conn = connect_db()
         cursor = conn.cursor()
-        sql = "INSERT INTO MedicineRemider (id, Name, Date, Time, compartment) VALUES (%s, %s, %s, %s, %s)"
-        cursor.execute(sql, (id, name, date, time, compartment))
+        sql = "INSERT INTO MedicineRemider (id, Name, Date, Time, compartment) VALUES (1, %s, %s, %s, %s)"
+        cursor.execute(sql, (name, date, time, compartment))
         conn.commit()
         return "New record inserted successfully!"
     except mysql.connector.Error as err:
@@ -31,12 +31,12 @@ def insert_medicine(id, name, date, time, compartment):
         conn.close()
 
 # Function to update data
-def update_medicine(id, name, date, time, compartment):
+def update_medicine(name, date, time, compartment):
     try:
         conn = connect_db()
         cursor = conn.cursor()
-        sql = "UPDATE MedicineRemider SET Name = %s, Time = %s, compartment = %s WHERE id = %s AND Date = %s"
-        cursor.execute(sql, (name, time, compartment, id, date))
+        sql = "UPDATE MedicineRemider SET Name = %s, Time = %s, compartment = %s WHERE id = 1 AND Date = %s"
+        cursor.execute(sql, (name, time, compartment, date))
         conn.commit()
         return "Record updated successfully!"
     except mysql.connector.Error as err:
@@ -69,7 +69,6 @@ tab1, tab2, tab3 = st.tabs(["Insert Data", "Update Data", "Check Data"])
 # **Tab 1: Insert Data**
 with tab1:
     st.header("Insert Medicine Reminder")
-    id = st.number_input("Enter ID", min_value=1, step=1)
     name = st.text_input("Medicine Name")
     date = st.date_input("Date", value=datetime.today())
 
@@ -85,13 +84,12 @@ with tab1:
     compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5])
 
     if st.button("Insert Data"):
-        response = insert_medicine(id, name, date.strftime("%Y-%m-%d"), time, compartment)
+        response = insert_medicine(name, date.strftime("%Y-%m-%d"), time, compartment)
         st.success(response)
 
 # **Tab 2: Update Data**
 with tab2:
     st.header("Update Medicine Reminder")
-    id_update = st.number_input("Enter ID to Update", min_value=1, step=1)
     name_update = st.text_input("New Medicine Name")
     date_update = st.date_input("Date to Update", value=datetime.today())
 
@@ -107,7 +105,7 @@ with tab2:
     compartment_update = st.selectbox("Select New Compartment", [1, 2, 3, 4, 5])
 
     if st.button("Update Data"):
-        response = update_medicine(id_update, name_update, date_update.strftime("%Y-%m-%d"), time_update, compartment_update)
+        response = update_medicine(name_update, date_update.strftime("%Y-%m-%d"), time_update, compartment_update)
         st.success(response)
 
 # **Tab 3: Check Data**
