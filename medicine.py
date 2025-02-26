@@ -45,10 +45,6 @@ def update_medicine(id, name, date, time, compartment):
         cursor.close()
         conn.close()
 
-# Function to fetch compartments for dropdown
-def get_compartments():
-    return [str(i) for i in range(1, 11)]  # Example compartments from 1 to 10
-
 # Function to fetch medicine records by date
 def get_medicine_by_date(date):
     try:
@@ -85,7 +81,8 @@ with tab1:
         minute = st.number_input("Minute", min_value=0, max_value=59, step=1, format="%02d")
     time = f"{hour:02d}:{minute:02d}"  # Formatting time in HH:MM format
 
-    compartment = st.text_input("Compartment")
+    # Dropdown for Compartment Selection (1 to 5)
+    compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5])
 
     if st.button("Insert Data"):
         response = insert_medicine(id, name, date.strftime("%Y-%m-%d"), time, compartment)
@@ -106,8 +103,8 @@ with tab2:
         minute_update = st.number_input("New Minute", min_value=0, max_value=59, step=1, format="%02d")
     time_update = f"{hour_update:02d}:{minute_update:02d}"
 
-    # Dropdown for Compartment Selection
-    compartment_update = st.selectbox("Select New Compartment", get_compartments())
+    # Dropdown for Compartment Selection (1 to 5)
+    compartment_update = st.selectbox("Select New Compartment", [1, 2, 3, 4, 5])
 
     if st.button("Update Data"):
         response = update_medicine(id_update, name_update, date_update.strftime("%Y-%m-%d"), time_update, compartment_update)
