@@ -81,7 +81,7 @@ with tab1:
     time = f"{hour:02d}:{minute:02d}"  # Formatting time in HH:MM format
 
     # Dropdown for Compartment Selection (1 to 5)
-    compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5])
+    compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5, 6])
 
     if st.button("Insert Data"):
         response = insert_medicine(name, date.strftime("%Y-%m-%d"), time, compartment)
