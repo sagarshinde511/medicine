@@ -102,7 +102,7 @@ with tab2:
     time_update = f"{hour_update:02d}:{minute_update:02d}"
 
     # Dropdown for Compartment Selection (1 to 5)
-    compartment_update = st.selectbox("Select New Compartment", [1, 2, 3, 4, 5])
+    compartment_update = st.selectbox("Select New Compartment", [1, 2, 3, 4, 5,6])
 
     if st.button("Update Data"):
         response = update_medicine(name_update, date_update.strftime("%Y-%m-%d"), time_update, compartment_update)
