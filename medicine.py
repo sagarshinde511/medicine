@@ -27,8 +27,9 @@ def insert_medicine(name, date, time, compartment):
     except mysql.connector.Error as err:
         return f"Error: {err}"
     finally:
-        cursor.close()
-        conn.close()
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
 
 # Function to update data
 def update_medicine(name, date, time, compartment):
@@ -42,8 +43,9 @@ def update_medicine(name, date, time, compartment):
     except mysql.connector.Error as err:
         return f"Error: {err}"
     finally:
-        cursor.close()
-        conn.close()
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
 
 # Function to fetch medicine records by date
 def get_medicine_by_date(date):
@@ -57,67 +59,73 @@ def get_medicine_by_date(date):
     except mysql.connector.Error as err:
         return []
     finally:
-        cursor.close()
-        conn.close()
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
 
 # Streamlit App
-st.title("Medicine Reminder Management")
+st.set_page_config(page_title="Medicine Reminder", layout="centered")
+st.title("💊 Medicine Reminder Management")
 
 # Create tabs
-tab1, tab2, tab3 = st.tabs(["Insert Data", "Update Data", "Check Data"])
+tab1, tab2, tab3 = st.tabs(["➕ Insert Data", "📝 Update Data", "🔍 Check Data"])
 
 # **Tab 1: Insert Data**
 with tab1:
     st.header("Insert Medicine Reminder")
-    name = st.text_input("Medicine Name")
-    date = st.date_input("Date", value=datetime.today())
+    name = st.text_input("Medicine Name", key="ins_name")
+    date = st.date_input("Date", value=datetime.today(), key="ins_date")
 
-    # Time Selection with Spinner (HH:MM format)
     col1, col2 = st.columns(2)
     with col1:
-        hour = st.number_input("Hour", min_value=0, max_value=23, step=1, format="%02d")
+        hour = st.number_input("Hour", min_value=0, max_value=23, step=1, format="%02d", key="ins_hour")
     with col2:
-        minute = st.number_input("Minute", min_value=0, max_value=59, step=1, format="%02d")
-    time = f"{hour:02d}:{minute:02d}"  # Formatting time in HH:MM format
+        minute = st.number_input("Minute", min_value=0, max_value=59, step=1, key="ins_min")
+    
+    # Custom Time Formatting: No leading zero for minutes 0-9
+    formatted_time = f"{hour:02d}:{minute}" 
 
-    # Dropdown for Compartment Selection (1 to 5)
-    compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5, 6])
+    compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5, 6], key="ins_comp")
 
     if st.button("Insert Data"):
-        response = insert_medicine(name, date.strftime("%Y-%m-%d"), time, compartment)
-        st.success(response)
+        if name:
+            response = insert_medicine(name, date.strftime("%Y-%m-%d"), formatted_time, compartment)
+            st.success(response)
+        else:
+            st.error("Please enter a medicine name.")
 
 # **Tab 2: Update Data**
 with tab2:
     st.header("Update Medicine Reminder")
-    name_update = st.text_input("New Medicine Name")
-    date_update = st.date_input("Date to Update", value=datetime.today())
+    name_update = st.text_input("New Medicine Name", key="upd_name")
+    date_update = st.date_input("Date to Update", value=datetime.today(), key="upd_date")
 
-    # Time Selection with Spinner (HH:MM format)
     col1, col2 = st.columns(2)
     with col1:
-        hour_update = st.number_input("New Hour", min_value=0, max_value=23, step=1, format="%02d")
+        hour_update = st.number_input("New Hour", min_value=0, max_value=23, step=1, format="%02d", key="upd_hour")
     with col2:
-        minute_update = st.number_input("New Minute", min_value=0, max_value=59, step=1, format="%02d")
-    time_update = f"{hour_update:02d}:{minute_update:02d}"
+        minute_update = st.number_input("New Minute", min_value=0, max_value=59, step=1, key="upd_min")
+    
+    # Custom Time Formatting: No leading zero for minutes 0-9
+    formatted_time_update = f"{hour_update:02d}:{minute_update}"
 
-    # Dropdown for Compartment Selection (1 to 5)
-    compartment_update = st.selectbox("Select New Compartment", [1, 2, 3, 4, 5,6])
+    compartment_update = st.selectbox("Select New Compartment", [1, 2, 3, 4, 5, 6], key="upd_comp")
 
     if st.button("Update Data"):
-        response = update_medicine(name_update, date_update.strftime("%Y-%m-%d"), time_update, compartment_update)
+        response = update_medicine(name_update, date_update.strftime("%Y-%m-%d"), formatted_time_update, compartment_update)
         st.success(response)
 
 # **Tab 3: Check Data**
 with tab3:
-    st.header("Check Medicine Reminders by Date")
-    date_check = st.date_input("Select Date to View Records", value=datetime.today())
+    st.header("Check Medicine Reminders")
+    date_check = st.date_input("Select Date to View Records", value=datetime.today(), key="chk_date")
 
     if st.button("Fetch Data"):
         records = get_medicine_by_date(date_check.strftime("%Y-%m-%d"))
         if records:
             df = pd.DataFrame(records)
+            # Add day name for better readability
             df["Day"] = pd.to_datetime(df["Date"]).dt.day_name()
-            st.write(df)
+            st.dataframe(df, use_container_width=True)
         else:
             st.warning("No records found for the selected date.")
