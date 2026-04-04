@@ -2,6 +2,7 @@ import streamlit as st
 import mysql.connector
 import pandas as pd
 from datetime import datetime
+import pytz  # For Timezone management
 
 # Database Configuration
 DB_CONFIG = {
@@ -11,11 +12,18 @@ DB_CONFIG = {
     "database": "u263681140_students",
 }
 
+# Define IST Timezone
+IST = pytz.timezone('Asia/Kolkata')
+
+def get_now_ist():
+    """Helper to get current time in IST"""
+    return datetime.now(IST).replace(tzinfo=None) # Strip tzinfo for easier DB comparison
+
 # Function to connect to MySQL
 def connect_db():
     return mysql.connector.connect(**DB_CONFIG)
 
-# Function to insert data (ID default to 1)
+# Database Operations
 def insert_medicine(name, date, time, compartment):
     try:
         conn = connect_db()
@@ -31,7 +39,6 @@ def insert_medicine(name, date, time, compartment):
             cursor.close()
             conn.close()
 
-# Function to update data
 def update_medicine(name, date, time, compartment):
     try:
         conn = connect_db()
@@ -47,7 +54,6 @@ def update_medicine(name, date, time, compartment):
             cursor.close()
             conn.close()
 
-# Function to fetch all medicine records
 def get_all_records():
     try:
         conn = connect_db()
@@ -62,7 +68,6 @@ def get_all_records():
             cursor.close()
             conn.close()
 
-# Function to fetch medicine records by specific date
 def get_medicine_by_date(date):
     try:
         conn = connect_db()
@@ -77,18 +82,22 @@ def get_medicine_by_date(date):
             cursor.close()
             conn.close()
 
-# Streamlit App
-st.set_page_config(page_title="Medicine Reminder", layout="wide")
-st.title("💊 Medicine Reminder Management")
+# Streamlit App UI
+st.set_page_config(page_title="Medicine Reminder IST", layout="wide")
+st.title("💊 Medicine Reminder Management (IST)")
 
-# Create tabs
+# Show Current IST Time in Sidebar
+current_ist = get_now_ist()
+st.sidebar.metric("Current IST Time", current_ist.strftime("%H:%M:%S"))
+st.sidebar.write(f"Date: {current_ist.strftime('%Y-%m-%d')}")
+
 tab1, tab2, tab3, tab4 = st.tabs(["➕ Insert Data", "📝 Update Data", "🔍 Check by Date", "📜 History"])
 
 # **Tab 1: Insert Data**
 with tab1:
     st.header("Insert Medicine Reminder")
     name = st.text_input("Medicine Name", key="ins_name")
-    date = st.date_input("Date", value=datetime.today(), key="ins_date")
+    date = st.date_input("Date", value=current_ist.date(), key="ins_date")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -96,7 +105,6 @@ with tab1:
     with col2:
         minute = st.number_input("Minute", min_value=0, max_value=59, step=1, key="ins_min")
     
-    # Logic: No leading zero for minutes 0-9
     formatted_time = f"{hour:02d}:{minute}" 
     compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5, 6], key="ins_comp")
 
@@ -111,7 +119,7 @@ with tab1:
 with tab2:
     st.header("Update Medicine Reminder")
     name_update = st.text_input("New Medicine Name", key="upd_name")
-    date_update = st.date_input("Date to Update", value=datetime.today(), key="upd_date")
+    date_update = st.date_input("Date to Update", value=current_ist.date(), key="upd_date")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -129,7 +137,7 @@ with tab2:
 # **Tab 3: Check Data**
 with tab3:
     st.header("Check Medicine Reminders by Date")
-    date_check = st.date_input("Select Date", value=datetime.today(), key="chk_date")
+    date_check = st.date_input("Select Date", value=current_ist.date(), key="chk_date")
 
     if st.button("Fetch Data"):
         records = get_medicine_by_date(date_check.strftime("%Y-%m-%d"))
@@ -140,42 +148,35 @@ with tab3:
         else:
             st.warning("No records found for this date.")
 
-# **Tab 4: History (Filtered by current Date & Time)**
-# **Tab 4: History (Filtered by current Date & Time)**
+# **Tab 4: History (Filtered by IST)**
 with tab4:
     st.header("History (Passed Reminders)")
-    st.info(f"Current System Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     
     if st.button("Refresh History"):
         all_records = get_all_records()
         
         if all_records:
-            now = datetime.now()
             past_data = []
 
             for row in all_records:
                 try:
-                    # 1. Handle the Date (Convert string to date object if necessary)
+                    # Parse Date
                     db_date = row['Date']
                     if isinstance(db_date, str):
                         db_date = datetime.strptime(db_date, "%Y-%m-%d").date()
 
-                    # 2. Parse the custom time format (e.g., "10:5")
+                    # Parse Time (Handle single digit minutes)
                     time_str = row['Time']
                     h_str, m_str = time_str.split(':')
-                    
-                    # 3. Create the time object
                     time_obj = datetime.strptime(f"{int(h_str):02d}:{int(m_str):02d}", "%H:%M").time()
                     
-                    # 4. Combine Date and Time
+                    # Combine and Compare
                     record_datetime = datetime.combine(db_date, time_obj)
                     
-                    # 5. Check if this record is before "now"
-                    if record_datetime < now:
+                    if record_datetime < current_ist:
                         row['Day'] = record_datetime.strftime('%A')
                         past_data.append(row)
-                except Exception as e:
-                    # Skip rows with malformed data to prevent the whole app from crashing
+                except:
                     continue
 
             if past_data:
@@ -183,6 +184,6 @@ with tab4:
                 history_df = history_df.sort_values(by=['Date', 'Time'], ascending=False)
                 st.dataframe(history_df, use_container_width=True)
             else:
-                st.warning("No past records found yet.")
+                st.warning("No past reminders found.")
         else:
-            st.error("No records found in the database.")
+            st.error("No records found.")
