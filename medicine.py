@@ -47,6 +47,21 @@ def update_medicine(name, date, time, compartment):
             cursor.close()
             conn.close()
 
+# Function to fetch all medicine records for history
+def get_all_history():
+    try:
+        conn = connect_db()
+        cursor = conn.cursor(dictionary=True)
+        sql = "SELECT * FROM MedicineRemider ORDER BY Date DESC, Time DESC"
+        cursor.execute(sql)
+        return cursor.fetchall()
+    except mysql.connector.Error as err:
+        return []
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
+
 # Function to fetch medicine records by date
 def get_medicine_by_date(date):
     try:
@@ -54,8 +69,7 @@ def get_medicine_by_date(date):
         cursor = conn.cursor(dictionary=True)
         sql = "SELECT * FROM MedicineRemider WHERE Date = %s"
         cursor.execute(sql, (date,))
-        result = cursor.fetchall()
-        return result
+        return cursor.fetchall()
     except mysql.connector.Error as err:
         return []
     finally:
@@ -64,11 +78,11 @@ def get_medicine_by_date(date):
             conn.close()
 
 # Streamlit App
-st.set_page_config(page_title="Medicine Reminder", layout="centered")
+st.set_page_config(page_title="Medicine Reminder", layout="wide")
 st.title("💊 Medicine Reminder Management")
 
 # Create tabs
-tab1, tab2, tab3 = st.tabs(["➕ Insert Data", "📝 Update Data", "🔍 Check Data"])
+tab1, tab2, tab3, tab4 = st.tabs(["➕ Insert Data", "📝 Update Data", "🔍 Check by Date", "📜 History"])
 
 # **Tab 1: Insert Data**
 with tab1:
@@ -87,7 +101,7 @@ with tab1:
 
     compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5, 6], key="ins_comp")
 
-    if st.button("Insert Data"):
+    if st.button("Insert Data", type="primary"):
         if name:
             response = insert_medicine(name, date.strftime("%Y-%m-%d"), formatted_time, compartment)
             st.success(response)
@@ -106,9 +120,7 @@ with tab2:
     with col2:
         minute_update = st.number_input("New Minute", min_value=0, max_value=59, step=1, key="upd_min")
     
-    # Custom Time Formatting: No leading zero for minutes 0-9
     formatted_time_update = f"{hour_update:02d}:{minute_update}"
-
     compartment_update = st.selectbox("Select New Compartment", [1, 2, 3, 4, 5, 6], key="upd_comp")
 
     if st.button("Update Data"):
@@ -117,15 +129,49 @@ with tab2:
 
 # **Tab 3: Check Data**
 with tab3:
-    st.header("Check Medicine Reminders")
-    date_check = st.date_input("Select Date to View Records", value=datetime.today(), key="chk_date")
+    st.header("Check Medicine Reminders by Date")
+    date_check = st.date_input("Select Date", value=datetime.today(), key="chk_date")
 
     if st.button("Fetch Data"):
         records = get_medicine_by_date(date_check.strftime("%Y-%m-%d"))
         if records:
             df = pd.DataFrame(records)
-            # Add day name for better readability
             df["Day"] = pd.to_datetime(df["Date"]).dt.day_name()
             st.dataframe(df, use_container_width=True)
         else:
-            st.warning("No records found for the selected date.")
+            st.warning("No records found for this date.")
+
+# **Tab 4: History (Past Records)**
+with tab4:
+    st.header("Past Reminders (History)")
+    st.write("Showing all medicines scheduled before current date and time.")
+    
+    if st.button("Refresh History"):
+        all_records = get_all_history()
+        
+        if all_records:
+            now = datetime.now()
+            past_data = []
+
+            for row in all_records:
+                # Reconstruct time string to handle the missing leading zero in minutes for parsing
+                # If time is "10:5", we need to make it "10:05" just for comparison logic
+                t_parts = row['Time'].split(':')
+                h = int(t_parts[0])
+                m = int(t_parts[1])
+                
+                # Create a datetime object for the record
+                record_dt = datetime.combine(row['Date'], datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
+                
+                # Check if record is in the past
+                if record_dt < now:
+                    row['Day'] = record_dt.strftime('%A')
+                    past_data.append(row)
+
+            if past_data:
+                history_df = pd.DataFrame(past_data)
+                st.dataframe(history_df, use_container_width=True)
+            else:
+                st.info("No past records found.")
+        else:
+            st.warning("Database is empty.")
