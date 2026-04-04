@@ -141,6 +141,7 @@ with tab3:
             st.warning("No records found for this date.")
 
 # **Tab 4: History (Filtered by current Date & Time)**
+# **Tab 4: History (Filtered by current Date & Time)**
 with tab4:
     st.header("History (Passed Reminders)")
     st.info(f"Current System Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
@@ -153,25 +154,32 @@ with tab4:
             past_data = []
 
             for row in all_records:
-                # 1. Parse the custom time format (e.g., "10:5" -> 10 hours, 5 minutes)
-                time_str = row['Time']
-                h_str, m_str = time_str.split(':')
-                
-                # 2. Combine with the date from DB to create a full datetime object
-                # row['Date'] is usually a datetime.date object from mysql-connector
-                record_datetime = datetime.combine(
-                    row['Date'], 
-                    datetime.strptime(f"{int(h_str):02d}:{int(m_str):02d}", "%H:%M").time()
-                )
-                
-                # 3. Check if this record is before "now"
-                if record_datetime < now:
-                    row['Day'] = record_datetime.strftime('%A')
-                    past_data.append(row)
+                try:
+                    # 1. Handle the Date (Convert string to date object if necessary)
+                    db_date = row['Date']
+                    if isinstance(db_date, str):
+                        db_date = datetime.strptime(db_date, "%Y-%m-%d").date()
+
+                    # 2. Parse the custom time format (e.g., "10:5")
+                    time_str = row['Time']
+                    h_str, m_str = time_str.split(':')
+                    
+                    # 3. Create the time object
+                    time_obj = datetime.strptime(f"{int(h_str):02d}:{int(m_str):02d}", "%H:%M").time()
+                    
+                    # 4. Combine Date and Time
+                    record_datetime = datetime.combine(db_date, time_obj)
+                    
+                    # 5. Check if this record is before "now"
+                    if record_datetime < now:
+                        row['Day'] = record_datetime.strftime('%A')
+                        past_data.append(row)
+                except Exception as e:
+                    # Skip rows with malformed data to prevent the whole app from crashing
+                    continue
 
             if past_data:
                 history_df = pd.DataFrame(past_data)
-                # Sort by most recent first
                 history_df = history_df.sort_values(by=['Date', 'Time'], ascending=False)
                 st.dataframe(history_df, use_container_width=True)
             else:
