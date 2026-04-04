@@ -163,7 +163,9 @@ with tab4:
                 # Create a datetime object for the record
                 # Use .date() to ensure the first argument is a Python date object
                 #record_dt = datetime.combine(row['Date'].date(), datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
-                record_dt = datetime.combine(row['Date'], datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
+                #record_dt = datetime.combine(row['Date'], datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
+                # Add .date() to row['Date']
+                record_dt = datetime.combine(pd.to_datetime(row['Date']).date(), datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
                 
                 # Check if record is in the past
                 if record_dt < now:
