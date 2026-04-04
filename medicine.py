@@ -161,6 +161,8 @@ with tab4:
                 m = int(t_parts[1])
                 
                 # Create a datetime object for the record
+                # Use .date() to ensure the first argument is a Python date object
+                #record_dt = datetime.combine(row['Date'].date(), datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
                 record_dt = datetime.combine(row['Date'], datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
                 
                 # Check if record is in the past
