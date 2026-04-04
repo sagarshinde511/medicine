@@ -47,12 +47,12 @@ def update_medicine(name, date, time, compartment):
             cursor.close()
             conn.close()
 
-# Function to fetch all medicine records for history
-def get_all_history():
+# Function to fetch all medicine records
+def get_all_records():
     try:
         conn = connect_db()
         cursor = conn.cursor(dictionary=True)
-        sql = "SELECT * FROM MedicineRemider ORDER BY Date DESC, Time DESC"
+        sql = "SELECT * FROM MedicineRemider ORDER BY Date DESC"
         cursor.execute(sql)
         return cursor.fetchall()
     except mysql.connector.Error as err:
@@ -62,7 +62,7 @@ def get_all_history():
             cursor.close()
             conn.close()
 
-# Function to fetch medicine records by date
+# Function to fetch medicine records by specific date
 def get_medicine_by_date(date):
     try:
         conn = connect_db()
@@ -96,9 +96,8 @@ with tab1:
     with col2:
         minute = st.number_input("Minute", min_value=0, max_value=59, step=1, key="ins_min")
     
-    # Custom Time Formatting: No leading zero for minutes 0-9
+    # Logic: No leading zero for minutes 0-9
     formatted_time = f"{hour:02d}:{minute}" 
-
     compartment = st.selectbox("Select Compartment", [1, 2, 3, 4, 5, 6], key="ins_comp")
 
     if st.button("Insert Data", type="primary"):
@@ -141,41 +140,41 @@ with tab3:
         else:
             st.warning("No records found for this date.")
 
-# **Tab 4: History (Past Records)**
+# **Tab 4: History (Filtered by current Date & Time)**
 with tab4:
-    st.header("Past Reminders (History)")
-    st.write("Showing all medicines scheduled before current date and time.")
+    st.header("History (Passed Reminders)")
+    st.info(f"Current System Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     
     if st.button("Refresh History"):
-        all_records = get_all_history()
+        all_records = get_all_records()
         
         if all_records:
             now = datetime.now()
             past_data = []
 
             for row in all_records:
-                # Reconstruct time string to handle the missing leading zero in minutes for parsing
-                # If time is "10:5", we need to make it "10:05" just for comparison logic
-                t_parts = row['Time'].split(':')
-                h = int(t_parts[0])
-                m = int(t_parts[1])
+                # 1. Parse the custom time format (e.g., "10:5" -> 10 hours, 5 minutes)
+                time_str = row['Time']
+                h_str, m_str = time_str.split(':')
                 
-                # Create a datetime object for the record
-                # Use .date() to ensure the first argument is a Python date object
-                #record_dt = datetime.combine(row['Date'].date(), datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
-                #record_dt = datetime.combine(row['Date'], datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
-                # Add .date() to row['Date']
-                record_dt = datetime.combine(pd.to_datetime(row['Date']).date(), datetime.strptime(f"{h:02d}:{m:02d}", "%H:%M").time())
+                # 2. Combine with the date from DB to create a full datetime object
+                # row['Date'] is usually a datetime.date object from mysql-connector
+                record_datetime = datetime.combine(
+                    row['Date'], 
+                    datetime.strptime(f"{int(h_str):02d}:{int(m_str):02d}", "%H:%M").time()
+                )
                 
-                # Check if record is in the past
-                if record_dt < now:
-                    row['Day'] = record_dt.strftime('%A')
+                # 3. Check if this record is before "now"
+                if record_datetime < now:
+                    row['Day'] = record_datetime.strftime('%A')
                     past_data.append(row)
 
             if past_data:
                 history_df = pd.DataFrame(past_data)
+                # Sort by most recent first
+                history_df = history_df.sort_values(by=['Date', 'Time'], ascending=False)
                 st.dataframe(history_df, use_container_width=True)
             else:
-                st.info("No past records found.")
+                st.warning("No past records found yet.")
         else:
-            st.warning("Database is empty.")
+            st.error("No records found in the database.")
